@@ -34,6 +34,9 @@ type WorkerScriptParams struct {
 	// Bindings should be a map where the keys are the binding name, and the
 	// values are the binding content
 	Bindings map[string]WorkerBinding
+	// Compatibility options
+	CompatibilityFlags []string
+	CompatibilityDate  string
 }
 
 // WorkerRoute is used to map traffic matching a URL pattern to a workers
@@ -61,8 +64,10 @@ type WorkerRouteResponse struct {
 // WorkerScript Cloudflare Worker struct with metadata.
 type WorkerScript struct {
 	WorkerMetaData
-	Script     string `json:"script"`
-	UsageModel string `json:"usage_model,omitempty"`
+	Script            string   `json:"script"`
+	UsageModel        string   `json:"usage_model,omitempty"`
+	CompatibiltyFlags []string `json:"compatibility_flags,omitempty"`
+	CompatibiltyDate  string   `json:"compatibility_date,omitempty"`
 }
 
 // WorkerMetaData contains worker script information such as size, creation & modification dates.
@@ -720,11 +725,16 @@ func formatMultipartBody(params *WorkerScriptParams) (string, []byte, error) {
 	// Write metadata part
 	var scriptPartName string
 	meta := struct {
-		BodyPart   string              `json:"body_part,omitempty"`
-		MainModule string              `json:"main_module,omitempty"`
-		Bindings   []workerBindingMeta `json:"bindings"`
+		BodyPart           string              `json:"body_part,omitempty"`
+		MainModule         string              `json:"main_module,omitempty"`
+		Bindings           []workerBindingMeta `json:"bindings"`
+		CompatibilityFlags []string            `json:"compatibility_flags"`
+		CompatibilityDate  string              `json:"compatibility_date"`
 	}{
-		Bindings: make([]workerBindingMeta, 0, len(params.Bindings)),
+		BodyPart:           scriptPartName,
+		Bindings:           make([]workerBindingMeta, 0, len(params.Bindings)),
+		CompatibilityFlags: params.CompatibilityFlags,
+		CompatibilityDate:  params.CompatibilityDate,
 	}
 
 	if params.Module {
