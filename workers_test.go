@@ -150,8 +150,12 @@ const (
 				"environment": "MY_ENVIRONMENT"
 			},
 			{
+				"name": "MY_DISPATCHER",
+				"type": "dynamic_dispatch"
+			},
+			{
 				"name": "MY_NEW_BINDING",
-				"type": "some_imaginary_new_binding_type"
+				"type": "inherit"
 			},
 			{
 				"name": "MY_BUCKET",
@@ -1007,6 +1011,40 @@ func TestWorkers_UploadWorkerWithCompatibilityFlags(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestWorkers_UploadWorkerWithDynamicDispatch(t *testing.T) {
+	setup(UsingAccount("foo"))
+	defer teardown()
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPut, r.Method, "Expected method 'PUT', got %s", r.Method)
+
+		mpUpload, err := parseMultipartUpload(r)
+		assert.NoError(t, err)
+
+		expectedBindings := map[string]workerBindingMeta{
+			"b1": {
+				"type": "dynamic_dispatch",
+				"name": "b1",
+			},
+		}
+		assert.Equal(t, workerScript, mpUpload.Script)
+		assert.Equal(t, expectedBindings, mpUpload.BindingMeta)
+
+		w.Header().Set("content-type", "application/json")
+		fmt.Fprintf(w, uploadWorkerResponseData) //nolint
+	}
+	mux.HandleFunc("/accounts/foo/workers/scripts/bar", handler)
+
+	scriptParams := WorkerScriptParams{
+		Script: workerScript,
+		Bindings: map[string]WorkerBinding{
+			"b1": WorkerDynamicDispatchBinding{},
+		},
+	}
+	_, err := client.UploadWorkerWithBindings(context.Background(), &WorkerRequestParams{ScriptName: "bar"}, &scriptParams)
+	assert.NoError(t, err)
+}
+
 func TestWorkers_CreateWorkerRoute(t *testing.T) {
 	setup()
 	defer teardown()
@@ -1274,7 +1312,7 @@ func TestWorkers_ListWorkerBindingsMultiScript(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, successResponse, res.Response)
-	assert.Equal(t, 8, len(res.BindingList))
+	assert.Equal(t, 9, len(res.BindingList))
 
 	assert.Equal(t, res.BindingList[0], WorkerBindingListItem{
 		Name: "MY_KV",
@@ -1316,26 +1354,32 @@ func TestWorkers_ListWorkerBindingsMultiScript(t *testing.T) {
 	assert.Equal(t, WorkerServiceBindingType, res.BindingList[4].Binding.Type())
 
 	assert.Equal(t, res.BindingList[5], WorkerBindingListItem{
+		Name:    "MY_DISPATCHER",
+		Binding: WorkerDynamicDispatchBinding{},
+	})
+	assert.Equal(t, WorkerDynamicDispatchBindingType, res.BindingList[5].Binding.Type())
+
+	assert.Equal(t, res.BindingList[6], WorkerBindingListItem{
 		Name:    "MY_NEW_BINDING",
 		Binding: WorkerInheritBinding{},
 	})
-	assert.Equal(t, WorkerInheritBindingType, res.BindingList[5].Binding.Type())
+	assert.Equal(t, WorkerInheritBindingType, res.BindingList[6].Binding.Type())
 
-	assert.Equal(t, res.BindingList[6], WorkerBindingListItem{
+	assert.Equal(t, res.BindingList[7], WorkerBindingListItem{
 		Name: "MY_BUCKET",
 		Binding: WorkerR2BucketBinding{
 			BucketName: "bucket",
 		},
 	})
-	assert.Equal(t, WorkerR2BucketBindingType, res.BindingList[6].Binding.Type())
+	assert.Equal(t, WorkerR2BucketBindingType, res.BindingList[7].Binding.Type())
 
-	assert.Equal(t, res.BindingList[7], WorkerBindingListItem{
+	assert.Equal(t, res.BindingList[8], WorkerBindingListItem{
 		Name: "MY_DATASET",
 		Binding: WorkerAnalyticsEngineBinding{
 			Dataset: "my_dataset",
 		},
 	})
-	assert.Equal(t, WorkerAnalyticsEngineBindingType, res.BindingList[7].Binding.Type())
+	assert.Equal(t, WorkerAnalyticsEngineBindingType, res.BindingList[8].Binding.Type())
 }
 
 func TestWorkers_UpdateWorkerRouteErrorsWhenMixingSingleAndMultiScriptProperties(t *testing.T) {
