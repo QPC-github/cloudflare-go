@@ -757,7 +757,6 @@ func formatMultipartBody(params *WorkerScriptParams) (string, []byte, error) {
 		CompatibilityFlags []string            `json:"compatibility_flags"`
 		CompatibilityDate  string              `json:"compatibility_date"`
 	}{
-		BodyPart:           scriptPartName,
 		Bindings:           make([]workerBindingMeta, 0, len(params.Bindings)),
 		CompatibilityFlags: params.CompatibilityFlags,
 		CompatibilityDate:  params.CompatibilityDate,

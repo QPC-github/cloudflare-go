@@ -47,6 +47,18 @@ const (
     "errors": [],
     "messages": []
 }`
+
+	uploadWorkerModuleResponseData = `{
+    "result": {
+        "script": "export default {\n    async fetch(request, env, event) {\n     event.passThroughOnException()\n    return fetch(request)\n    }\n}",
+        "etag": "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
+        "size": 191,
+        "modified_on": "2018-06-09T15:17:01.989141Z"
+    },
+    "success": true,
+    "errors": [],
+    "messages": []
+}`
 	updateWorkerRouteResponse = `{
     "result": {
         "id": "e7a57d8746e74ae49c25994dadb421b1",
@@ -221,6 +233,8 @@ export default {
 
 var (
 	successResponse               = Response{Success: true, Errors: []ResponseInfo{}, Messages: []ResponseInfo{}}
+	workerScript                  = "addEventListener('fetch', event => {\n    event.passThroughOnException()\nevent.respondWith(handleRequest(event.request))\n})\n\nasync function handleRequest(request) {\n    return fetch(request)\n}"
+	workerModuleScript            = "export default {\n    async fetch(request, env, event) {\n     event.passThroughOnException()\n    return fetch(request)\n    }\n}"
 	deleteWorkerRouteResponseData = createWorkerRouteResponse
 	attachWorkerToDomainResponse  = fmt.Sprintf(`{
     "result": {
@@ -260,6 +274,21 @@ func getFormValue(r *http.Request, key string) ([]byte, error) {
 			return nil, err
 		}
 		return io.ReadAll(file)
+	}
+
+	return nil, fmt.Errorf("no value found for key %v", key)
+}
+
+func getFileDetails(r *http.Request, key string) (*multipart.FileHeader, error) {
+	err := r.ParseMultipartForm(1024 * 1024)
+	if err != nil {
+		return nil, err
+	}
+
+	fileHeaders := r.MultipartForm.File[key]
+
+	if len(fileHeaders) > 0 {
+		return fileHeaders[0], nil
 	}
 
 	return nil, fmt.Errorf("no value found for key %v", key)
