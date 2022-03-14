@@ -37,6 +37,9 @@ const (
     "result": {
         "script": "export default {\n  async fetch(request, env, event) {\n    event.passThroughOnException()\n    return fetch(request)\n  }\n}",
         "etag": "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
+        "etag_bypass": "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a.bypass",
+        "compatibility_flags": ["streams_enable_constructors"],
+       	"compatibility_date": "2021-12-10",
         "size": 191,
         "modified_on": "2018-06-09T15:17:01.989141Z"
     },
@@ -492,9 +495,12 @@ func TestWorkers_UploadWorker(t *testing.T) {
 		WorkerScript{
 			Script: workerScript,
 			WorkerMetaData: WorkerMetaData{
-				ETAG:       "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
-				Size:       191,
-				ModifiedOn: formattedTime,
+				ETAG:              "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
+				ETAGBypass:        "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a.bypass",
+				CompatibiltyDate:  "2021-12-10",
+				CompatibiltyFlags: []string{"streams_enable_constructors"},
+				Size:              191,
+				ModifiedOn:        formattedTime,
 			},
 		}}
 	if assert.NoError(t, err) {
@@ -560,9 +566,12 @@ func TestWorkers_UploadWorkerWithName(t *testing.T) {
 		WorkerScript{
 			Script: workerScript,
 			WorkerMetaData: WorkerMetaData{
-				ETAG:       "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
-				Size:       191,
-				ModifiedOn: formattedTime,
+				ETAG:              "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
+				ETAGBypass:        "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a.bypass",
+				CompatibiltyDate:  "2021-12-10",
+				CompatibiltyFlags: []string{"streams_enable_constructors"},
+				Size:              191,
+				ModifiedOn:        formattedTime,
 			},
 		}}
 	if assert.NoError(t, err) {
@@ -589,9 +598,12 @@ func TestWorkers_UploadWorkerSingleScriptWithAccount(t *testing.T) {
 		WorkerScript{
 			Script: workerScript,
 			WorkerMetaData: WorkerMetaData{
-				ETAG:       "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
-				Size:       191,
-				ModifiedOn: formattedTime,
+				ETAG:              "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
+				ETAGBypass:        "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a.bypass",
+				CompatibiltyDate:  "2021-12-10",
+				CompatibiltyFlags: []string{"streams_enable_constructors"},
+				Size:              191,
+				ModifiedOn:        formattedTime,
 			},
 		}}
 	if assert.NoError(t, err) {
@@ -695,9 +707,12 @@ func TestWorkers_UploadWorkerWithInheritBinding(t *testing.T) {
 		WorkerScript{
 			Script: workerScript,
 			WorkerMetaData: WorkerMetaData{
-				ETAG:       "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
-				Size:       191,
-				ModifiedOn: formattedTime,
+				ETAG:              "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
+				ETAGBypass:        "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a.bypass",
+				CompatibiltyDate:  "2021-12-10",
+				CompatibiltyFlags: []string{"streams_enable_constructors"},
+				Size:              191,
+				ModifiedOn:        formattedTime,
 			},
 		}}
 
