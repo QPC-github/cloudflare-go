@@ -19,8 +19,9 @@ import (
 
 // WorkerRequestParams provides parameters for worker requests for both enterprise and standard requests.
 type WorkerRequestParams struct {
-	ZoneID     string
-	ScriptName string
+	ZoneID        string
+	ScriptName    string
+	NamespaceName string
 }
 
 // WorkerScriptParams provides a worker script and the associated bindings.
@@ -729,6 +730,9 @@ func (api *API) UploadWorkerWithBindings(ctx context.Context, requestParams *Wor
 	if err != nil {
 		return WorkerScriptResponse{}, err
 	}
+	if requestParams.NamespaceName != "" && requestParams.ScriptName != "" {
+		return api.uploadWorkerWithNamespace(ctx, requestParams.NamespaceName, requestParams.ScriptName, contentType, body)
+	}
 	if requestParams.ScriptName != "" {
 		return api.uploadWorkerWithName(ctx, requestParams.ScriptName, contentType, body)
 	}
@@ -756,6 +760,25 @@ func (api *API) uploadWorkerWithName(ctx context.Context, scriptName, contentTyp
 		return WorkerScriptResponse{}, errors.New("account ID required")
 	}
 	uri := fmt.Sprintf("/accounts/%s/workers/scripts/%s", api.AccountID, scriptName)
+	headers := make(http.Header)
+	headers.Set("Content-Type", contentType)
+	res, err := api.makeRequestContextWithHeaders(ctx, http.MethodPut, uri, body, headers)
+	var r WorkerScriptResponse
+	if err != nil {
+		return r, err
+	}
+	err = json.Unmarshal(res, &r)
+	if err != nil {
+		return r, fmt.Errorf("%s: %w", errUnmarshalError, err)
+	}
+	return r, nil
+}
+
+func (api *API) uploadWorkerWithNamespace(ctx context.Context, namespaceName, scriptName, contentType string, body []byte) (WorkerScriptResponse, error) {
+	if api.AccountID == "" {
+		return WorkerScriptResponse{}, errors.New("account ID required")
+	}
+	uri := fmt.Sprintf("/accounts/%s/workers/dispatch/namespaces/%s/scripts/%s", api.AccountID, namespaceName, scriptName)
 	headers := make(http.Header)
 	headers.Set("Content-Type", contentType)
 	res, err := api.makeRequestContextWithHeaders(ctx, http.MethodPut, uri, body, headers)
