@@ -26,6 +26,9 @@ const (
     "result": {
         "script": "addEventListener('fetch', event => {\n  event.passThroughOnException()\n  event.respondWith(handleRequest(event.request))\n})\n\nasync function handleRequest(request) {\n  return fetch(request)\n}",
         "etag": "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
+		"etag_bypass": "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a.bypass",
+        "compatibility_flags": ["streams_enable_constructors"],
+       	"compatibility_date": "2021-12-10",
         "size": 191,
         "modified_on": "2018-06-09T15:17:01.989141Z"
     },
@@ -41,18 +44,6 @@ const (
         "etag_bypass": "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a.bypass",
         "compatibility_flags": ["streams_enable_constructors"],
        	"compatibility_date": "2021-12-10",
-        "size": 191,
-        "modified_on": "2018-06-09T15:17:01.989141Z"
-    },
-    "success": true,
-    "errors": [],
-    "messages": []
-}`
-
-	uploadWorkerModuleResponseData = `{
-    "result": {
-        "script": "export default {\n    async fetch(request, env, event) {\n     event.passThroughOnException()\n    return fetch(request)\n    }\n}",
-        "etag": "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
         "size": 191,
         "modified_on": "2018-06-09T15:17:01.989141Z"
     },
@@ -291,8 +282,6 @@ export default {
 
 var (
 	successResponse               = Response{Success: true, Errors: []ResponseInfo{}, Messages: []ResponseInfo{}}
-	workerScript                  = "addEventListener('fetch', event => {\n    event.passThroughOnException()\nevent.respondWith(handleRequest(event.request))\n})\n\nasync function handleRequest(request) {\n    return fetch(request)\n}"
-	workerModuleScript            = "export default {\n    async fetch(request, env, event) {\n     event.passThroughOnException()\n    return fetch(request)\n    }\n}"
 	deleteWorkerRouteResponseData = createWorkerRouteResponse
 	attachWorkerToDomainResponse  = fmt.Sprintf(`{
     "result": {
@@ -352,26 +341,12 @@ func getFileDetails(r *http.Request, key string) (*multipart.FileHeader, error) 
 	return nil, fmt.Errorf("no value found for key %v", key)
 }
 
-func getFileDetails(r *http.Request, key string) (*multipart.FileHeader, error) {
-	err := r.ParseMultipartForm(1024 * 1024)
-	if err != nil {
-		return nil, err
-	}
-
-	fileHeaders := r.MultipartForm.File[key]
-
-	if len(fileHeaders) > 0 {
-		return fileHeaders[0], nil
-	}
-
-	return nil, fmt.Errorf("no value found for key %v", key)
-}
-
 type multipartUpload struct {
 	Script             string
 	BindingMeta        map[string]workerBindingMeta
 	CompatibilityFlags []string
 	CompatibilityDate  string
+	Logpush            *bool
 }
 
 func parseMultipartUpload(r *http.Request) (multipartUpload, error) {
@@ -387,6 +362,7 @@ func parseMultipartUpload(r *http.Request) (multipartUpload, error) {
 		Bindings           []workerBindingMeta `json:"bindings"`
 		CompatibilityFlags []string            `json:"compatibility_flags"`
 		CompatibilityDate  string              `json:"compatibility_date"`
+		Logpush            *bool               `json:"logpush,omitempty"`
 	}
 	err = json.Unmarshal(mdBytes, &metadata)
 	if err != nil {
@@ -417,6 +393,7 @@ func parseMultipartUpload(r *http.Request) (multipartUpload, error) {
 		BindingMeta:        bindingMeta,
 		CompatibilityFlags: metadata.CompatibilityFlags,
 		CompatibilityDate:  metadata.CompatibilityDate,
+		Logpush:            metadata.Logpush,
 	}, nil
 }
 
@@ -628,9 +605,12 @@ func TestWorkers_UploadWorkerAsModule(t *testing.T) {
 		WorkerScript{
 			Script: workerModuleScript,
 			WorkerMetaData: WorkerMetaData{
-				ETAG:       "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
-				Size:       191,
-				ModifiedOn: formattedTime,
+				ETAG:              "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
+				ETAGBypass:        "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a.bypass",
+				CompatibiltyDate:  "2021-12-10",
+				CompatibiltyFlags: []string{"streams_enable_constructors"},
+				Size:              191,
+				ModifiedOn:        formattedTime,
 			},
 		}}
 	if assert.NoError(t, err) {
@@ -1064,6 +1044,44 @@ func TestWorkers_UploadWorkerWithServiceBinding(t *testing.T) {
 	}
 	_, err := client.UploadWorkerWithBindings(context.Background(), &WorkerRequestParams{ScriptName: "bar"}, &scriptParams)
 	assert.NoError(t, err)
+}
+
+func TestWorkers_UploadWorkerWithLogpush(t *testing.T) {
+	setup(UsingAccount("foo"))
+	defer teardown()
+
+	t.Log("testing started")
+
+	mux.HandleFunc("/accounts/foo/workers/scripts/bar", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPut, r.Method, "Expected method 'PUT', got %s", r.Method)
+		mpUpload, err := parseMultipartUpload(r)
+		assert.NoError(t, err)
+
+		expected := true
+		assert.Equal(t, &expected, mpUpload.Logpush)
+
+		w.Header().Set("content-type", "application/json")
+		fmt.Fprint(w, uploadWorkerResponseData)
+	})
+	res, err := client.UploadWorker(context.Background(), &WorkerRequestParams{ScriptName: "bar"}, &WorkerScriptParams{Script: workerScript, Logpush: BoolPtr(true)})
+	formattedTime, _ := time.Parse(time.RFC3339Nano, "2018-06-09T15:17:01.989141Z")
+	want := WorkerScriptResponse{
+		successResponse,
+		false,
+		WorkerScript{
+			Script: workerScript,
+			WorkerMetaData: WorkerMetaData{
+				ETAG:              "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a",
+				ETAGBypass:        "279cf40d86d70b82f6cd3ba90a646b3ad995912da446836d7371c21c6a43977a.bypass",
+				CompatibiltyDate:  "2021-12-10",
+				CompatibiltyFlags: []string{"streams_enable_constructors"},
+				Size:              191,
+				ModifiedOn:        formattedTime,
+			},
+		}}
+	if assert.NoError(t, err) {
+		assert.Equal(t, want, res)
+	}
 }
 
 func TestWorkers_UploadWorkerWithCompatibilityFlags(t *testing.T) {

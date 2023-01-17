@@ -38,6 +38,8 @@ type WorkerScriptParams struct {
 	// Compatibility options
 	CompatibilityFlags []string
 	CompatibilityDate  string
+
+	Logpush *bool
 }
 
 // WorkerRoute is used to map traffic matching a URL pattern to a workers
@@ -711,7 +713,7 @@ func (api *API) ListWorkerScripts(ctx context.Context) (WorkerListResponse, erro
 //
 // API reference: https://api.cloudflare.com/#worker-script-upload-worker
 func (api *API) UploadWorker(ctx context.Context, requestParams *WorkerRequestParams, params *WorkerScriptParams) (WorkerScriptResponse, error) {
-	if params.Module {
+	if params.Module || params.Logpush != nil {
 		return api.UploadWorkerWithBindings(ctx, requestParams, params)
 	}
 
@@ -807,10 +809,12 @@ func formatMultipartBody(params *WorkerScriptParams) (string, []byte, error) {
 		Bindings           []workerBindingMeta `json:"bindings"`
 		CompatibilityFlags []string            `json:"compatibility_flags"`
 		CompatibilityDate  string              `json:"compatibility_date"`
+		Logpush            *bool               `json:"logpush,omitempty"`
 	}{
 		Bindings:           make([]workerBindingMeta, 0, len(params.Bindings)),
 		CompatibilityFlags: params.CompatibilityFlags,
 		CompatibilityDate:  params.CompatibilityDate,
+		Logpush:            params.Logpush,
 	}
 
 	if params.Module {
